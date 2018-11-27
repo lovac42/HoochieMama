@@ -1,5 +1,5 @@
 # HoochieMama
-AnkiAddon: Ramdomize Queue
+AnkiAddon: Randomize Queue
 
 Title is in reference to Seinfeld, no relations to the current slang term.
 
