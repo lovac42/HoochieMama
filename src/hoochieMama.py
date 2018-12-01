@@ -32,6 +32,7 @@ import anki.sched
 from aqt import mw
 from anki.utils import ids2str, intTime
 from anki.hooks import wrap
+
 from anki import version
 ANKI21 = version.startswith("2.1.")
 
@@ -54,6 +55,7 @@ def fillRev(self, _old):
     if not self.revCount:
         return False
 
+#In the world of blackjack, “penetration”, or “deck penetration”, is the amount of cards that the dealer cuts off, relative to the cards dealt out.
     PENETRATION=QUEUE_LIMIT if CUSTOM_SORT else self.queueLimit
     lim=min(PENETRATION, currentRevLimit())
     if lim:
@@ -85,7 +87,6 @@ limit ?""" % (ids2str(self.col.decks.active()), sortBy),
                 # fixme: as soon as a card is answered, this is no longer consistent
                 r = random.Random()
                 # r.seed(self.today)
-                # r.seed(intTime(1000))
                 r.shuffle(self._revQueue)
             return True
 
