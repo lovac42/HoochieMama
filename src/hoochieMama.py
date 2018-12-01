@@ -2,9 +2,30 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.0.1
+# Version: 0.0.2
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
+
+# CONSTANTS:
+SORT_BY_HARD_FIRST="order by ivl desc"
+SORT_BY_EASY_FIRST="order by ivl asc"
+
+# == User Config =========================================
+
+#Warning! Chaning default settings may impact performance.
+
+CUSTOM_SORT = None #disabled
+# CUSTOM_SORT = SORT_BY_HARD_FIRST
+# CUSTOM_SORT = SORT_BY_EASY_FIRST
+
+#Anki's default QUEUE_LIMIT of 50 does not work well for parent decks,
+#so we changed it. Cheap windows tablets may need to lower this number.
+QUEUE_LIMIT = 250 #Deal size
+
+# == End Config ==========================================
+##########################################################
+
+
 
 import random
 import anki.sched
@@ -15,11 +36,11 @@ from anki import version
 ANKI21 = version.startswith("2.1.")
 
 
-
 #From: anki.schedv2.py
 #Mod:  names for backwards compatibility
 #Mod2: serenityNow, prioritize today first before overdues.
 #      This will even out the numbers imposed by the parent deck limits.
+#Mod3: added options for sorting by ivl.
 
 def fillRev(self, _old):
     qc = self.col.conf
@@ -33,14 +54,17 @@ def fillRev(self, _old):
     if not self.revCount:
         return False
 
-    lim = min(self.queueLimit, currentRevLimit())
-
+    PENETRATION=QUEUE_LIMIT if CUSTOM_SORT else self.queueLimit
+    lim=min(PENETRATION, currentRevLimit())
     if lim:
+        DYN=self.col.decks.get(self.col.decks.selected(),False)['dyn']
+        sortBy=CUSTOM_SORT if not DYN and CUSTOM_SORT else ''
+
         self._revQueue = self.col.db.list("""
 select id from cards where
 did in %s and queue = 2 and due = ?
-order by due
-limit ?""" % (ids2str(self.col.decks.active())),
+%s
+limit ?""" % (ids2str(self.col.decks.active()), sortBy),
                 self.today, lim)
 
 
@@ -49,20 +73,19 @@ limit ?""" % (ids2str(self.col.decks.active())),
             self._revQueue.extend(self.col.db.list("""
 select id from cards where
 did in %s and queue = 2 and due < ?
-order by due
-limit ?""" % (ids2str(self.col.decks.active())),
+%s
+limit ?""" % (ids2str(self.col.decks.active()), sortBy),
                 self.today, more))
 
 
         if self._revQueue:
-            if self.col.decks.get(self.col.decks.selected(), default=False)['dyn']:
-                # dynamic decks need due order preserved
+            if DYN: # dynamic decks need due order preserved
                 self._revQueue.reverse()
-            else:
+            elif sortBy=='':
                 # fixme: as soon as a card is answered, this is no longer consistent
                 r = random.Random()
                 # r.seed(self.today)
-                r.seed(intTime(1000))
+                # r.seed(intTime(1000))
                 r.shuffle(self._revQueue)
             return True
 
