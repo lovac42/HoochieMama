@@ -21,3 +21,8 @@ To prevent conflicts with other similar addons, this must be activated in prefer
 Note: If you have serenityNow installed, please update to the latest version or disable it. If you have any other addons that also monkey patches _fillRev, disable them as well. (e.g. <a href="https://ankiweb.net/shared/info/3731265543">Change Order of Review Cards in Regular Decks</a>)
 
 <img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/prefmenu.jpg?raw=true">
+
+
+## Bugs/Features:
+There is a mis-count issue with the V1 scheduler where the deck browser reports a review total calculated from each subdeck limit. In the overview, and with the actual reviews, the numbers are based on the limit from the parent deck (V2). This discrepancy may cause some confusion, but it is only a cosmetic difference. Patching this may break compatibility with other popular addons, so I decided to leave this as it is.
+

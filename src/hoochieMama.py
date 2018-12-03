@@ -2,21 +2,25 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.0.3
+# Version: 0.0.5
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
 # CONSTANTS:
-SORT_BY_HARD_FIRST="order by ivl desc"
-SORT_BY_EASY_FIRST="order by ivl asc"
+SHOW_YOUNG_FIRST="order by ivl desc"
+SHOW_MATURE_FIRST="order by ivl asc"
+SHOW_LOW_REPS_FIRST="order by reps desc"
+SHOW_HIGH_REPS_FIRST="order by reps asc"
 
 # == User Config =========================================
 
 #Warning! Chaning default settings may impact performance.
 
-CUSTOM_SORT = None #disabled
-# CUSTOM_SORT = SORT_BY_HARD_FIRST
-# CUSTOM_SORT = SORT_BY_EASY_FIRST
+CUSTOM_SORT = None #Default: Randomize review
+# CUSTOM_SORT = SHOW_YOUNG_FIRST
+# CUSTOM_SORT = SHOW_MATURE_FIRST
+# CUSTOM_SORT = SHOW_LOW_REPS_FIRST
+# CUSTOM_SORT = SHOW_HIGH_REPS_FIRST
 
 #Anki's default QUEUE_LIMIT of 50 does not work well for parent decks,
 #so we changed it. Cheap windows tablets may need to lower this number.
@@ -109,10 +113,10 @@ def currentRevLimit():
     d = mw.col.decks.get(mw.col.decks.selected(), default=False)
     return deckRevLimitSingle(d)
 
+
 #From: anki.schedv2.py
 def deckRevLimitSingle(d, parentLimit=None):
-    # invalid deck selected?
-    if not d: return 0
+    if not d: return 0  # invalid deck selected?
     if d['dyn']: return 99999
 
     c = mw.col.decks.confForDid(d['id'])
@@ -128,10 +132,26 @@ def deckRevLimitSingle(d, parentLimit=None):
         return lim
 
 
+#For reviewer count display (cosmetic)
+#From: anki.schedv2.py
+def resetRevCount(self, _old):
+    qc = self.col.conf
+    if not qc.get("hoochieMama", False):
+        return _old(self)
+
+    lim = currentRevLimit()
+    self.revCount = self.col.db.scalar("""
+select count() from (select id from cards where
+did in %s and queue = 2 and due <= ? limit %d)""" % (
+        ids2str(self.col.decks.active()), lim), self.today)
+
+
 anki.sched.Scheduler._fillRev = wrap(anki.sched.Scheduler._fillRev, fillRev, 'around')
+anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around') #no need for v2
 if ANKI21:
     import anki.schedv2
     anki.schedv2.Scheduler._fillRev = wrap(anki.schedv2.Scheduler._fillRev, fillRev, 'around')
+
 
 
 ##################################################
