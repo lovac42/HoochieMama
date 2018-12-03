@@ -24,5 +24,5 @@ Note: If you have serenityNow installed, please update to the latest version or 
 
 
 ## Bugs/Features:
-There is a mis-count issue with the V1 scheduler where the deck browser reports a review total calculated from each subdeck limit. In the overview, and with the actual reviews, the numbers are based on the limit from the parent deck (V2). This discrepancy may cause some confusion, but it is only a cosmetic difference. Patching this may break compatibility with other popular addons, so I decided to leave this as it is.
+In the event where subdecks have a large amount of overdues and both parent and child are capped at a small number, there is a mis-count issue with the V1 scheduler. The deck browser would report a review total calculated from each subdeck limit (V1), but in the overview and with the actual reviews, the numbers are based on the limit from the parent deck (V2). This discrepancy may cause some confusion, but it is only a cosmetic difference. Patching this will break compatibility with other popular addons, so I decided to leave this as it is. With the addon <a href="https://ankiweb.net/shared/info/877182321">Enhanced Main Window</a> or similar plugins, you should be able to get a ballpark of the actual review count making any fixes unnecessary.
 
