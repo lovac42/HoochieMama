@@ -2,7 +2,7 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.0.7
+# Version: 0.0.8
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
@@ -34,7 +34,7 @@ QUEUE_LIMIT = 256 #Deal size
 import random
 import anki.sched
 from aqt import mw
-from anki.utils import ids2str, intTime
+from anki.utils import ids2str
 from anki.hooks import wrap, addHook
 
 from anki import version
@@ -153,7 +153,7 @@ did in %s and queue = 2 and due <= ? limit %d)""" % (
 
 
 anki.sched.Scheduler._fillRev = wrap(anki.sched.Scheduler._fillRev, fillRev, 'around')
-# anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around') #no need for v2
+anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around') #no need for v2
 if ANKI21:
     import anki.schedv2
     anki.schedv2.Scheduler._fillRev = wrap(anki.schedv2.Scheduler._fillRev, fillRev, 'around')
