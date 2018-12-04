@@ -2,7 +2,7 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.0.6
+# Version: 0.0.7
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
@@ -35,10 +35,11 @@ import random
 import anki.sched
 from aqt import mw
 from anki.utils import ids2str, intTime
-from anki.hooks import wrap
+from anki.hooks import wrap, addHook
 
 from anki import version
 ANKI21 = version.startswith("2.1.")
+on_sync=False
 
 
 #From: anki.schedv2.py
@@ -47,8 +48,6 @@ def fillRev(self, _old):
     if self._revQueue:
         return True
     if not self.revCount:
-        return False
-    if not self.col: #For Sync
         return False
 
     # This seem like old comments left behind, and does not affect current versions.
@@ -140,7 +139,8 @@ def deckRevLimitSingle(self, d, parentLimit=None):
 #For reviewer count display (cosmetic)
 #From: anki.schedv2.py
 def resetRevCount(self, _old):
-    if not self.col: return #For Sync
+    if on_sync: return _old(self)
+
     qc = self.col.conf
     if not qc.get("hoochieMama", False):
         return _old(self)
@@ -153,10 +153,21 @@ did in %s and queue = 2 and due <= ? limit %d)""" % (
 
 
 anki.sched.Scheduler._fillRev = wrap(anki.sched.Scheduler._fillRev, fillRev, 'around')
-anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around') #no need for v2
+# anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around') #no need for v2
 if ANKI21:
     import anki.schedv2
     anki.schedv2.Scheduler._fillRev = wrap(anki.schedv2.Scheduler._fillRev, fillRev, 'around')
+
+
+
+#This fixes sync errors
+def onSync(type):
+    global on_sync
+    if type=='finalize':
+        on_sync=False
+    else:
+        on_sync=True
+addHook('sync',onSync)
 
 
 
@@ -190,13 +201,11 @@ def setupUi(self, Preferences):
     self.gridLayout_4.addWidget(self.hoochieMama, r, 0, 1, 3)
 
 def __init__(self, mw):
-    if not self.mw.col: return #For Sync
     qc = self.mw.col.conf
     cb=qc.get("hoochieMama", 0)
     self.form.hoochieMama.setCheckState(cb)
 
 def accept(self):
-    if not self.mw.col: return #For Sync
     qc = self.mw.col.conf
     qc['hoochieMama']=self.form.hoochieMama.checkState()
 
