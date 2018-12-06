@@ -2,44 +2,53 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.0.9
+# Version: 0.1.3
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
 # CONSTANTS:
-SHOW_YOUNG_FIRST="order by ivl desc"
-SHOW_MATURE_FIRST="order by ivl asc"
-SHOW_LOW_REPS_FIRST="order by reps desc"
-SHOW_HIGH_REPS_FIRST="order by reps asc"
+SHOW_YOUNG_FIRST="order by ivl asc"
+SHOW_MATURE_FIRST="order by ivl desc"
+SHOW_LOW_REPS_FIRST="order by reps asc"
+SHOW_HIGH_REPS_FIRST="order by reps desc"
+SORT_BY_OVERDUES="order by due"
 
 # == User Config =========================================
 
-#Warning! Chaning default settings may impact performance.
+#Ensures even distribution of sub-decks by prioritizing today's due reviews first.
+PRIORITIZE_TODAY = True
 
-CUSTOM_SORT = None #Default: Randomize review
+IMPOSE_SUBDECK_LIMIT = True  #Randomizes custom sorts by chunks.
+
+CUSTOM_SORT = None #Default: Randomize review sorted by dues in chunks.
 # CUSTOM_SORT = SHOW_YOUNG_FIRST
 # CUSTOM_SORT = SHOW_MATURE_FIRST
 # CUSTOM_SORT = SHOW_LOW_REPS_FIRST
 # CUSTOM_SORT = SHOW_HIGH_REPS_FIRST
+# CUSTOM_SORT = SORT_BY_OVERDUES
 
-#Anki's default QUEUE_LIMIT of 50 does not work well for parent decks,
-#so we changed it. Cheap windows tablets may need to lower this number.
-QUEUE_LIMIT = 256 #Deal size
 
 # == End Config ==========================================
 ##########################################################
-
 
 
 import random
 import anki.sched
 from aqt import mw
 from anki.utils import ids2str
-from anki.hooks import wrap, addHook
+from aqt.utils import showText
+from anki.hooks import wrap
 
 from anki import version
 ANKI21 = version.startswith("2.1.")
 on_sync=False
+
+
+#Turn this on if you are having problems.
+def debugInfo(msg):
+    # print(msg) #console
+    # showText(msg) #Windows
+    return
 
 
 #From: anki.schedv2.py
@@ -49,6 +58,7 @@ def fillRev(self, _old):
         return True
     if not self.revCount:
         return False
+    # Below section is invoked everytime the reviewer is reset (edits, adds, etc)
 
     # This seem like old comments left behind, and does not affect current versions.
     # Remove these lines for testing
@@ -60,46 +70,25 @@ def fillRev(self, _old):
     qc = self.col.conf
     if not qc.get("hoochieMama", False):
         return _old(self)
-    # print('using hoochieMama')
+    debugInfo('using hoochieMama')
 
 
-# In the world of blackjack, “penetration”, or “deck penetration”, 
-# is the amount of cards that the dealer cuts off,
-# relative to the cards dealt out.
     lim=currentRevLimit(self)
     if lim:
-        if CUSTOM_SORT:
-            penetration=min(QUEUE_LIMIT,lim)
-            sortBy=CUSTOM_SORT
-        else: #Default
-            penetration=min(self.queueLimit,lim)
-            sortBy=''
-
-        self._revQueue = self.col.db.list("""
-select id from cards where
-did in %s and queue = 2 and due = ?
-%s limit ?""" % (ids2str(self.col.decks.active()), sortBy),
-                self.today, penetration)
-
-
-        more=penetration-len(self._revQueue)
-        if more:
-            arr=self.col.db.list("""
-select id from cards where
-did in %s and queue = 2 and due < ?
-%s limit ?""" % (ids2str(self.col.decks.active()), sortBy),
-                self.today, more)
-            if arr: self._revQueue.extend(arr)
-
+        lim=min(self.queueLimit,lim)
+        sortBy=CUSTOM_SORT if CUSTOM_SORT else 'order by due'
+        if IMPOSE_SUBDECK_LIMIT:
+            self._revQueue=getRevQueuePerSubDeck(self,sortBy,lim)
+        else:
+            self._revQueue=getRevQueue(self,sortBy,lim)
 
         if self._revQueue:
-            if not CUSTOM_SORT:
+            if not CUSTOM_SORT or IMPOSE_SUBDECK_LIMIT:
                 # fixme: as soon as a card is answered, this is no longer consistent
                 r = random.Random()
-                # r.seed(self.today)
+                # r.seed(self.today) #same seed in case user edits card.
                 r.shuffle(self._revQueue)
             return True
-
     if self.revCount:
         # if we didn't get a card but the count is non-zero,
         # we need to check again for any cards that were
@@ -107,6 +96,58 @@ did in %s and queue = 2 and due < ?
         self._resetRev()
         return self._fillRev()
 
+
+
+# In the world of blackjack, “penetration”, or “deck penetration”, 
+# is the amount of cards that the dealer cuts off, relative to the cards dealt out.
+def getRevQueue(self, sortBy, penetration):
+    debugInfo('v2 queue builder')
+    deckList=ids2str(self.col.decks.active())
+    revQueue=[]
+
+    if PRIORITIZE_TODAY:
+        revQueue = self.col.db.list("""
+select id from cards where
+did in %s and queue = 2 and due = ?
+%s limit ?""" % (deckList, sortBy),
+                self.today, penetration)
+
+    if not revQueue:
+        revQueue = self.col.db.list("""
+select id from cards where
+did in %s and queue = 2 and due <= ?
+%s limit ?""" % (deckList, sortBy),
+                self.today, penetration)
+
+    revQueue.reverse()
+    return revQueue
+
+
+
+def getRevQueuePerSubDeck(self,sortBy,penetration):
+    debugInfo('per subdeck queue builder')
+    revQueue=[]
+    pen=penetration//len(self.col.decks.active())
+    pen=max(5,pen) #if div by large val
+    for did in self.col.decks.active():
+        d=self.col.decks.get(did)
+        lim=deckRevLimitSingle(self,d,pen)
+        arr=None
+        if PRIORITIZE_TODAY:
+            arr=self.col.db.list("""
+select id from cards where
+did = ? and queue = 2 and due = ?
+%s limit ?"""%sortBy, did, self.today, lim)
+
+        if not arr:
+            arr=self.col.db.list("""
+select id from cards where
+did = ? and queue = 2 and due <= ?
+%s limit ?"""%sortBy, did, self.today, lim)
+
+        revQueue.extend(arr) #randomized later
+        if len(revQueue)>=penetration: break
+    return revQueue
 
 
 
@@ -137,26 +178,50 @@ def deckRevLimitSingle(self, d, parentLimit=None):
 
 
 #For reviewer count display (cosmetic)
-#From: anki.schedv2.py
 def resetRevCount(self, _old):
-    if on_sync: return _old(self)
+    if on_sync:
+        return _old(self)
 
     qc = self.col.conf
     if not qc.get("hoochieMama", False):
         return _old(self)
 
+    if IMPOSE_SUBDECK_LIMIT:
+        return _resetRevCountV1(self)
+    return _resetRevCountV2(self)
+
+
+#From: anki.schedv2.py
+def _resetRevCountV2(self):
     lim = currentRevLimit(self)
     self.revCount = self.col.db.scalar("""
 select count() from (select id from cards where
 did in %s and queue = 2 and due <= ? limit %d)""" % (
         ids2str(self.col.decks.active()), lim), self.today)
 
+#From: anki.sched.py
+def _resetRevCountV1(self):
+    def _deckRevLimitSingle(d):
+        if not d: return 0
+        if d['dyn']: return 1000
+        c = mw.col.decks.confForDid(d['id'])
+        return max(0, c['rev']['perDay'] - d['revToday'][1])
+    def cntFn(did, lim):
+        return self.col.db.scalar("""
+select count() from (select id from cards where
+did = ? and queue = 2 and due <= ? limit %d)""" % lim,
+                                      did, self.today)
+    self.revCount = self._walkingCount(
+        _deckRevLimitSingle, cntFn)
+
+
 
 anki.sched.Scheduler._fillRev = wrap(anki.sched.Scheduler._fillRev, fillRev, 'around')
-anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around') #no need for v2
+anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around')
 if ANKI21:
     import anki.schedv2
     anki.schedv2.Scheduler._fillRev = wrap(anki.schedv2.Scheduler._fillRev, fillRev, 'around')
+    anki.schedv2.Scheduler._resetRevCount = wrap(anki.schedv2.Scheduler._resetRevCount, resetRevCount, 'around')
 
 
 
@@ -170,6 +235,8 @@ def onSync(self):
     return ret
 
 anki.sync.Syncer.sync=onSync
+
+
 
 ##################################################
 #
