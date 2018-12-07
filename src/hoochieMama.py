@@ -2,7 +2,7 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.1.3
+# Version: 0.1.4
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
@@ -15,18 +15,19 @@ SORT_BY_OVERDUES="order by due"
 
 # == User Config =========================================
 
-#Ensures even distribution of sub-decks by prioritizing today's due reviews first.
-PRIORITIZE_TODAY = True
+#Prevents round-robin scheduling of forgotten cards.
+PRIORITIZE_TODAY = False
 
-IMPOSE_SUBDECK_LIMIT = True  #Randomizes custom sorts by chunks.
+#Randomize reviews per subdeck, makes custom_sort randomized by chunks.
+IMPOSE_SUBDECK_LIMIT = False
 
-CUSTOM_SORT = None #Default: Randomize review sorted by dues in chunks.
+#Default: Reviews are sorted by dues and randomized in chunks.
+CUSTOM_SORT = None
 # CUSTOM_SORT = SHOW_YOUNG_FIRST
 # CUSTOM_SORT = SHOW_MATURE_FIRST
 # CUSTOM_SORT = SHOW_LOW_REPS_FIRST
 # CUSTOM_SORT = SHOW_HIGH_REPS_FIRST
 # CUSTOM_SORT = SORT_BY_OVERDUES
-
 
 # == End Config ==========================================
 ##########################################################
@@ -83,7 +84,9 @@ def fillRev(self, _old):
             self._revQueue=getRevQueue(self,sortBy,lim)
 
         if self._revQueue:
-            if not CUSTOM_SORT or IMPOSE_SUBDECK_LIMIT:
+            if CUSTOM_SORT and not IMPOSE_SUBDECK_LIMIT:
+                self._revQueue.reverse() #preserve order
+            else:
                 # fixme: as soon as a card is answered, this is no longer consistent
                 r = random.Random()
                 # r.seed(self.today) #same seed in case user edits card.
@@ -119,8 +122,7 @@ did in %s and queue = 2 and due <= ?
 %s limit ?""" % (deckList, sortBy),
                 self.today, penetration)
 
-    revQueue.reverse()
-    return revQueue
+    return revQueue #Order needs tobe reversed for custom sorts
 
 
 
@@ -132,6 +134,8 @@ def getRevQueuePerSubDeck(self,sortBy,penetration):
     for did in self.col.decks.active():
         d=self.col.decks.get(did)
         lim=deckRevLimitSingle(self,d,pen)
+        if not lim: continue
+
         arr=None
         if PRIORITIZE_TODAY:
             arr=self.col.db.list("""
@@ -145,9 +149,9 @@ select id from cards where
 did = ? and queue = 2 and due <= ?
 %s limit ?"""%sortBy, did, self.today, lim)
 
-        revQueue.extend(arr) #randomized later
+        revQueue.extend(arr) 
         if len(revQueue)>=penetration: break
-    return revQueue
+    return revQueue #randomized later
 
 
 
