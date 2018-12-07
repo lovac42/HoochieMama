@@ -1,21 +1,27 @@
 # HoochieMama
 AnkiAddon: Randomize Queue
 
-Title is in reference to Seinfeld, no relations to the current slang term.
+<i>Title is in reference to Seinfeld, no relations to the current slang term.</i>
+
 
 ## About:
-This is the back-ported _fillRev method from the v2 scheduler with some added features from serenityNow and works on both v1 and v2 scheduler. It allows randomization of sub-decks on the v1 scheduler without switching to the v2 scheduler.
+This is the back-ported _fillRev method from the V2 scheduler with some added features from serenityNow and works on both v1 and v2 scheduler. It allows randomization of subdecks on the v1 scheduler without switching to the V2 scheduler.
 
-"'Randomization of sub-decks on the v1 scheduler' in an add-on for 2.0 means to have the best part of the V2 scheduler (imo) while you can sync with AnkiDroid and use all the add-ons that haven't been ported yet." -ijgnd
+"'Randomization of subdecks on the v1 scheduler' in an add-on for 2.0 means to have the best part of the V2 scheduler (imo) while you can sync with AnkiDroid and use all the add-ons that haven't been ported yet." -<b>ijgnd</b>
 
+Note1: V2 only randomizes review cards, not learning or new cards.
 
-### Enhancements:
-V2 randomizes sub-decks but uses max reviews from the parent deck. This creates an imbalance where users with large amount of over due low priority cards could potentially end up focusing on one sub-deck. A typical example: say Leaves, Clouds, Knots, and Math with a max review of 5 each and a cap at 20 for the parent deck. If the user have a large amount of overdue, say 25 each, the V2 scheduler would grab 20 cards sorted by dues resulting in 13 Leaves, 4 Clouds, 2 Knots, and 1 Math.
+Note2: V2 randomizes subdecks but uses max reviews limit from the parent deck. This creates an imbalance where users with large amount of over due low priority cards could potentially end up focusing on one subdeck. A typical example: say Leaves, Clouds, Knots, and Math with a max review of 5 each and a cap at 20 for the parent deck. If the user have a large amount of overdue, say 25 each, the V2 scheduler would grab 20 cards sorted by dues resulting in 13 Leaves, 4 Clouds, 2 Knots, and 1 Math.
 
-The enhancement added is to focus on today's dues first. So for the previous example, it would be 4 dues today from each subdeck follow by any extra over dues from yesterday or later. Of course there are better enhancements that could have been made, but not for the general public and will probably degrade the performance of Anki. I see this as a reasonable compromise.
+### Enhancements (off by default):
+- <b>Customize sorting</b> by dues, intervals, or reps.
+- <b>Focus on today's dues first.</b> This will avoid round-robin scheduling of forgotten cards. It will also ensure a set number of today's due cards are taken from each subdeck.
+- <b>Enforce subdeck limits.</b> This uses a custom queue builder (not V2), a set number of cards are taken from each subdeck (up to max rev) then randomizes the review before displaying it to the user.
 
 
 ## Configs:
+For schedule config options, please <a href="https://github.com/lovac42/HoochieMama/blob/master/src/config.md">see this page for more details.</a>
+
 To prevent conflicts with other similar addons, this must be activated in preferences.
 
 Note: If you have serenityNow installed, please update to the latest version or disable it. If you have any other addons that also monkey patches _fillRev, disable them as well. (e.g. <a href="https://ankiweb.net/shared/info/3731265543">Change Order of Review Cards in Regular Decks</a>)
