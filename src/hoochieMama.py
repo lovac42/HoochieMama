@@ -2,7 +2,7 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.1.5
+# Version: 0.1.6
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
@@ -30,6 +30,13 @@ CUSTOM_SORT = None
 # CUSTOM_SORT = SORT_BY_OVERDUES
 
 # == End Config ==========================================
+
+## Performance Config ####################################
+
+# Performance impact cost O(n)
+# Uses quick shuffle if limit is exceeded.
+DECK_LIST_SHUFFLE_LIMIT = 128
+
 ##########################################################
 
 
@@ -130,8 +137,11 @@ def getRevQueuePerSubDeck(sched,sortBy,penetration):
     debugInfo('per subdeck queue builder')
     revQueue=[]
     LEN=len(sched._revDids)
-    if LEN>10: #shuffle deck ids
-        sched._revDids=cutDecks(sched._revDids,LEN)
+    if LEN>DECK_LIST_SHUFFLE_LIMIT: #segments
+        sched._revDids=cutDecks(sched._revDids,4) #0based
+    elif LEN>10: #shuffle deck ids
+        r=random.Random()
+        r.shuffle(sched._newDids)
 
     pen=max(5,penetration//LEN) #if div by large val
     for did in sched._revDids:
@@ -158,9 +168,13 @@ did = ? and queue = 2 and due <= ?
 
 
 #Like cutting cards, this is a quick and dirty way to randomize the deck ids
-def cutDecks(queue,total):
-    assert(total>10)
-    cut=total//random.randint(2,5)
+def cutDecks(queue,cnt=0):
+    total=len(queue)
+    p=random.randint(30,70) # %
+    cut=total*p//100
+    if cnt:
+        q=cutDecks(queue[cut:],cnt-1)
+        return q+cutDecks(queue[:cut],cnt-1)
     return queue[cut:]+queue[:cut]
 
 
