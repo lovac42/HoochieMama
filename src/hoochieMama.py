@@ -2,7 +2,7 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.1.6
+# Version: 0.1.7
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
@@ -137,11 +137,12 @@ def getRevQueuePerSubDeck(sched,sortBy,penetration):
     debugInfo('per subdeck queue builder')
     revQueue=[]
     LEN=len(sched._revDids)
-    if LEN>DECK_LIST_SHUFFLE_LIMIT: #segments
-        sched._revDids=cutDecks(sched._revDids,4) #0based
-    elif LEN>10: #shuffle deck ids
-        r=random.Random()
-        r.shuffle(sched._newDids)
+    if LEN>10: #auto shuffles >=10, 50/5
+        if LEN>DECK_LIST_SHUFFLE_LIMIT: #segments
+            sched._revDids=cutDecks(sched._revDids,4) #0based
+        else: #shuffle deck ids
+            r=random.Random()
+            r.shuffle(sched._revDids)
 
     pen=max(5,penetration//LEN) #if div by large val
     for did in sched._revDids:
