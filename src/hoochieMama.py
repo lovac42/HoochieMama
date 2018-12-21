@@ -2,7 +2,7 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.1.4
+# Version: 0.1.7
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
@@ -30,6 +30,13 @@ CUSTOM_SORT = None
 # CUSTOM_SORT = SORT_BY_OVERDUES
 
 # == End Config ==========================================
+
+## Performance Config ####################################
+
+# Performance impact cost O(n)
+# Uses quick shuffle if limit is exceeded.
+DECK_LIST_SHUFFLE_LIMIT = 128
+
 ##########################################################
 
 
@@ -126,32 +133,50 @@ did in %s and queue = 2 and due <= ?
 
 
 
-def getRevQueuePerSubDeck(self,sortBy,penetration):
+def getRevQueuePerSubDeck(sched,sortBy,penetration):
     debugInfo('per subdeck queue builder')
     revQueue=[]
-    pen=penetration//len(self.col.decks.active())
-    pen=max(5,pen) #if div by large val
-    for did in self.col.decks.active():
-        d=self.col.decks.get(did)
-        lim=deckRevLimitSingle(self,d,pen)
+    LEN=len(sched._revDids)
+    if LEN>10: #auto shuffles >=10, 50/5
+        if LEN>DECK_LIST_SHUFFLE_LIMIT: #segments
+            sched._revDids=cutDecks(sched._revDids,4) #0based
+        else: #shuffle deck ids
+            r=random.Random()
+            r.shuffle(sched._revDids)
+
+    pen=max(5,penetration//LEN) #if div by large val
+    for did in sched._revDids:
+        d=sched.col.decks.get(did)
+        lim=deckRevLimitSingle(sched,d,pen)
         if not lim: continue
 
         arr=None
         if PRIORITIZE_TODAY:
-            arr=self.col.db.list("""
+            arr=sched.col.db.list("""
 select id from cards where
 did = ? and queue = 2 and due = ?
-%s limit ?"""%sortBy, did, self.today, lim)
+%s limit ?"""%sortBy, did, sched.today, lim)
 
         if not arr:
-            arr=self.col.db.list("""
+            arr=sched.col.db.list("""
 select id from cards where
 did = ? and queue = 2 and due <= ?
-%s limit ?"""%sortBy, did, self.today, lim)
+%s limit ?"""%sortBy, did, sched.today, lim)
 
         revQueue.extend(arr) 
         if len(revQueue)>=penetration: break
     return revQueue #randomized later
+
+
+#Like cutting cards, this is a quick and dirty way to randomize the deck ids
+def cutDecks(queue,cnt=0):
+    total=len(queue)
+    p=random.randint(30,70) # %
+    cut=total*p//100
+    if cnt:
+        q=cutDecks(queue[cut:],cnt-1)
+        return q+cutDecks(queue[:cut],cnt-1)
+    return queue[cut:]+queue[:cut]
 
 
 
@@ -257,16 +282,10 @@ if ANKI21:
 else:
     from PyQt4 import QtCore, QtGui as QtWidgets
 
-try:
-    _fromUtf8 = QtCore.QString.fromUtf8
-except AttributeError:
-    def _fromUtf8(s):
-        return s
 
 def setupUi(self, Preferences):
     r=self.gridLayout_4.rowCount()
     self.hoochieMama = QtWidgets.QCheckBox(self.tab_1)
-    self.hoochieMama.setObjectName(_fromUtf8("hoochieMama"))
     self.hoochieMama.setText(_('Hoochie Mama! Randomize Queue'))
     self.hoochieMama.toggled.connect(lambda:toggle(self))
     self.gridLayout_4.addWidget(self.hoochieMama, r, 0, 1, 3)
