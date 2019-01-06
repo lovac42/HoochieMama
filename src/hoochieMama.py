@@ -2,7 +2,7 @@
 # Copyright: (C) 2018 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.1.7
+# Version: 0.1.8
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
@@ -147,7 +147,7 @@ def getRevQueuePerSubDeck(sched,sortBy,penetration):
     pen=max(5,penetration//LEN) #if div by large val
     for did in sched._revDids:
         d=sched.col.decks.get(did)
-        lim=deckRevLimitSingle(sched,d,pen)
+        lim=min(pen,deckRevLimitSingle(sched,d)) #find parent limit
         if not lim: continue
 
         arr=None
