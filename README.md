@@ -9,7 +9,7 @@ This is the back-ported _fillRev method from the V2 scheduler with some added fe
 
 "'Randomization of subdecks on the v1 scheduler' in an add-on for 2.0 means to have the best part of the V2 scheduler (imo) while you can sync with AnkiDroid and use all the add-ons that haven't been ported yet." -<b>ijgnd</b>
 
-Note1: V2 only randomizes review cards, not learning or new cards.
+Note1: V2 only randomizes review cards, not learning or new cards. Search for the addon HoochiePapa for this feature. And HoochieBaby randomizes the day learning queue. These uses the same template but were not developed on the same day and operates on differ queues.
 
 Note2: V2 randomizes subdecks but uses max reviews limit from the parent deck. This creates an imbalance where users with large amount of over due low priority cards could potentially end up focusing on one subdeck. A typical example: say Leaves, Clouds, Knots, and Math with a max review of 5 each and a cap at 20 for the parent deck. If the user have a large amount of overdue, say 25 each, the V2 scheduler would grab 20 cards sorted by dues resulting in 13 Leaves, 4 Clouds, 2 Knots, and 1 Math.
 
@@ -20,13 +20,13 @@ Note2: V2 randomizes subdecks but uses max reviews limit from the parent deck. T
 
 
 ## Configs:
-For schedule config options, please <a href="https://github.com/lovac42/HoochieMama/blob/master/src/config.md">see this page for more details.</a>
+This addon must be activated in preferences.
 
-To prevent conflicts with other similar addons, this must be activated in preferences.
+<img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/prefmenu.png?raw=true">
+
+For more info on config combo options, please <a href="https://github.com/lovac42/HoochieMama/blob/master/src/config.md">see this page for more details.</a>
 
 Note: If you have serenityNow installed, please update to the latest version or disable it. If you have any other addons that also monkey patches _fillRev, disable them as well. (e.g. <a href="https://ankiweb.net/shared/info/3731265543">Change Order of Review Cards in Regular Decks</a>)
-
-<img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/prefmenu.jpg?raw=true">
 
 
 ## Bugs/Features:
