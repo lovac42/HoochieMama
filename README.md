@@ -16,15 +16,14 @@ Note2: V2 randomizes subdecks but uses max reviews limit from the parent deck. T
 ### Enhancements (off by default):
 - <b>Customize sorting</b> by dues, intervals, or reps.
 - <b>Focus on today's dues first.</b> This will avoid round-robin scheduling of forgotten cards. It will also ensure a set number of today's due cards are taken from each subdeck.
-- <b>Enforce subdeck limits.</b> This uses a custom queue builder (not V2), a set number of cards are taken from each subdeck (up to max rev) then randomizes the review before displaying it to the user.
+- <b>Enforce subdeck limits.</b> This uses a custom queue builder (not V2), a set number of cards are taken from each subdeck (up to max rev) then randomizes the review before displaying it to the user. <b>If sorting, each deck is sorted individually, then 5+ cards are drawn at a time from each subdeck and shuffled before review.</b> So three subdeck sorting by ABC: 1A,1B,1C, 2A,2B,2C, 3A,3B,3C could result in 2A,3A,1A, 3B,1B,2B, 3C,2C,1C during review.
 
+For more info on config combo options, please <a href="https://github.com/lovac42/HoochieMama/blob/master/src/config.md">see this page for more details.</a>
 
 ## Configs:
 This addon must be activated in preferences.
 
 <img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/prefmenu.png?raw=true">
-
-For more info on config combo options, please <a href="https://github.com/lovac42/HoochieMama/blob/master/src/config.md">see this page for more details.</a>
 
 Note: If you have serenityNow installed, please update to the latest version or disable it. If you have any other addons that also monkey patches _fillRev, disable them as well. (e.g. <a href="https://ankiweb.net/shared/info/3731265543">Change Order of Review Cards in Regular Decks</a>)
 
