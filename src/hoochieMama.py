@@ -1,35 +1,31 @@
 # -*- coding: utf-8 -*-
-# Copyright: (C) 2018 Lovac42
+# Copyright: (C) 2018-2019 Lovac42
 # Support: https://github.com/lovac42/HoochieMama
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
-# Version: 0.1.9
+# Version: 0.2.0
 
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
-# CONSTANTS:
-SHOW_YOUNG_FIRST="order by ivl asc"
-SHOW_MATURE_FIRST="order by ivl desc"
-SHOW_LOW_REPS_FIRST="order by reps asc"
-SHOW_HIGH_REPS_FIRST="order by reps desc"
-SORT_BY_OVERDUES="order by due"
+
+CUSTOM_SORT = {
+  0:["None (Shuffled)", "order by due"],
 
 # == User Config =========================================
 
-#Prevents round-robin scheduling of forgotten cards.
-PRIORITIZE_TODAY = False
-
-#Randomize reviews per subdeck, makes custom_sort randomized by chunks.
-IMPOSE_SUBDECK_LIMIT = False
-
-#Default: Reviews are sorted by dues and randomized in chunks.
-CUSTOM_SORT = None
-# CUSTOM_SORT = SHOW_YOUNG_FIRST
-# CUSTOM_SORT = SHOW_MATURE_FIRST
-# CUSTOM_SORT = SHOW_LOW_REPS_FIRST
-# CUSTOM_SORT = SHOW_HIGH_REPS_FIRST
-# CUSTOM_SORT = SORT_BY_OVERDUES
+  1:["Young first",  "order by ivl asc"],
+  2:["Mature first", "order by ivl desc"],
+  3:["Low reps",     "order by reps asc"],
+  4:["High reps",    "order by reps desc"],
+  5:["Low ease factor",  "order by factor asc"],
+  6:["High ease factor", "order by factor desc"],
+  7:["Low lapses",   "order by lapses asc"],
+  8:["High lapses",  "order by lapses desc"],
+  9:["Overdues",     "order by due asc"],
+ 10:["Dues",         "order by due desc"]
 
 # == End Config ==========================================
+
+}
 
 ## Performance Config ####################################
 
@@ -76,22 +72,28 @@ def fillRev(self, _old):
 
 
     qc = self.col.conf
-    if not qc.get("hoochieMama", False):
+    if not qc.get("hoochieMama",0):
         return _old(self)
     debugInfo('using hoochieMama')
 
 
     lim=currentRevLimit(self)
     if lim:
+        sortLevel=qc.get("hoochieMamaSort", 0)
+        assert sortLevel < len(CUSTOM_SORT)
+        sortBy=CUSTOM_SORT[sortLevel][1]
+
         lim=min(self.queueLimit,lim)
-        sortBy=CUSTOM_SORT if CUSTOM_SORT else 'order by due'
-        if IMPOSE_SUBDECK_LIMIT:
-            self._revQueue=getRevQueuePerSubDeck(self,sortBy,lim)
+        perDeckLimit=qc.get("hoochieMama",0)==1
+        priToday=qc.get("hoochieMama_prioritize_today",False)
+
+        if perDeckLimit:
+            self._revQueue=getRevQueuePerSubDeck(self,sortBy,lim,priToday)
         else:
-            self._revQueue=getRevQueue(self,sortBy,lim)
+            self._revQueue=getRevQueue(self,sortBy,lim,priToday)
 
         if self._revQueue:
-            if CUSTOM_SORT and not IMPOSE_SUBDECK_LIMIT:
+            if sortLevel and not perDeckLimit:
                 self._revQueue.reverse() #preserve order
             else:
                 # fixme: as soon as a card is answered, this is no longer consistent
@@ -110,12 +112,12 @@ def fillRev(self, _old):
 
 # In the world of blackjack, “penetration”, or “deck penetration”, 
 # is the amount of cards that the dealer cuts off, relative to the cards dealt out.
-def getRevQueue(sched, sortBy, penetration):
+def getRevQueue(sched, sortBy, penetration, priToday=False):
     debugInfo('v2 queue builder')
     deckList=ids2str(sched.col.decks.active())
     revQueue=[]
 
-    if PRIORITIZE_TODAY:
+    if priToday:
         revQueue = sched.col.db.list("""
 select id from cards where
 did in %s and queue = 2 and due = ?
@@ -133,7 +135,7 @@ did in %s and queue = 2 and due <= ?
 
 
 
-def getRevQueuePerSubDeck(sched,sortBy,penetration):
+def getRevQueuePerSubDeck(sched, sortBy, penetration, priToday=False):
     debugInfo('per subdeck queue builder')
     revQueue=[]
     sched._revDids=sched.col.decks.active()
@@ -152,7 +154,7 @@ def getRevQueuePerSubDeck(sched,sortBy,penetration):
         if not lim: continue
 
         arr=None
-        if PRIORITIZE_TODAY:
+        if priToday:
             arr=sched.col.db.list("""
 select id from cards where
 did = ? and queue = 2 and due = ?
@@ -213,10 +215,10 @@ def resetRevCount(sched, _old):
         return _old(sched)
 
     qc = sched.col.conf
-    if not qc.get("hoochieMama", False):
+    if not qc.get("hoochieMama",0):
         return _old(sched)
 
-    if IMPOSE_SUBDECK_LIMIT:
+    if qc.get("hoochieMama",0)==1:
         return _resetRevCountV1(sched)
     return _resetRevCountV2(sched)
 
@@ -285,28 +287,84 @@ else:
 
 
 def setupUi(self, Preferences):
-    r=self.gridLayout_4.rowCount()
-    self.hoochieMama = QtWidgets.QCheckBox(self.tab_1)
-    self.hoochieMama.setText(_('Hoochie Mama! Randomize Queue'))
-    self.hoochieMama.toggled.connect(lambda:toggle(self))
-    self.gridLayout_4.addWidget(self.hoochieMama, r, 0, 1, 3)
+    try:
+        grid=self.lrnStageGLayout
+    except AttributeError:
+        self.lrnStage=QtWidgets.QWidget()
+        self.tabWidget.addTab(self.lrnStage, "Muffins")
+        self.lrnStageGLayout=QtWidgets.QGridLayout()
+        self.lrnStageVLayout=QtWidgets.QVBoxLayout(self.lrnStage)
+        self.lrnStageVLayout.addLayout(self.lrnStageGLayout)
+        spacerItem=QtWidgets.QSpacerItem(1, 1, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.lrnStageVLayout.addItem(spacerItem)
 
-def __init__(self, mw):
+    r=self.lrnStageGLayout.rowCount()
+    self.hoochieMama=QtWidgets.QCheckBox(self.lrnStage)
+    self.hoochieMama.setText(_('Hoochie Mama! Randomize Queue'))
+    self.hoochieMama.setTristate(True)
+    self.lrnStageGLayout.addWidget(self.hoochieMama, r, 0, 1, 3)
+    self.hoochieMama.clicked.connect(lambda:toggle(self))
+
+    r+=1
+    self.hoochieMamaPTD=QtWidgets.QCheckBox(self.lrnStage)
+    self.hoochieMamaPTD.setText(_('Prioritize Today?'))
+    self.lrnStageGLayout.addWidget(self.hoochieMamaPTD, r, 0, 1, 3)
+
+    r+=1
+    self.hoochieMamaSortLbl=QtWidgets.QLabel(self.lrnStage)
+    self.hoochieMamaSortLbl.setText(_("      Sort By:"))
+    self.lrnStageGLayout.addWidget(self.hoochieMamaSortLbl, r, 0, 1, 1)
+
+    self.hoochieMamaSort = QtWidgets.QComboBox(self.lrnStage)
+    if ANKI21:
+        itms=CUSTOM_SORT.items()
+    else:
+        itms=CUSTOM_SORT.iteritems()
+    for i,v in itms:
+        self.hoochieMamaSort.addItem(_(""))
+        self.hoochieMamaSort.setItemText(i, _(v[0]))
+    self.lrnStageGLayout.addWidget(self.hoochieMamaSort, r, 1, 1, 2)
+
+
+def load(self, mw):
     qc = self.mw.col.conf
     cb=qc.get("hoochieMama", 0)
     self.form.hoochieMama.setCheckState(cb)
+    cb=qc.get("hoochieMama_prioritize_today", 0)
+    self.form.hoochieMamaPTD.setCheckState(cb)
+    idx=qc.get("hoochieMamaSort", 0)
+    self.form.hoochieMamaSort.setCurrentIndex(idx)
+    toggle(self.form)
 
-def accept(self):
+
+def save(self):
+    toggle(self.form)
     qc = self.mw.col.conf
     qc['hoochieMama']=self.form.hoochieMama.checkState()
+    qc['hoochieMama_prioritize_today']=self.form.hoochieMamaPTD.checkState()
+    qc['hoochieMamaSort']=self.form.hoochieMamaSort.currentIndex()
+
 
 def toggle(self):
-    checked=not self.hoochieMama.checkState()==0
+    checked=self.hoochieMama.checkState()
     if checked:
         try:
             self.serenityNow.setCheckState(0)
         except: pass
+        grayout=False
+    else:
+        grayout=True
+
+    if checked==1:
+        txt='Hoochie Mama! RandRevQ w/ subdeck limit'
+    else:
+        txt='Hoochie Mama! Randomize Rev Queue'
+    self.hoochieMama.setText(_(txt))
+    self.hoochieMamaPTD.setDisabled(grayout)
+    self.hoochieMamaSort.setDisabled(grayout)
+    self.hoochieMamaSortLbl.setDisabled(grayout)
+
 
 aqt.forms.preferences.Ui_Preferences.setupUi = wrap(aqt.forms.preferences.Ui_Preferences.setupUi, setupUi, "after")
-aqt.preferences.Preferences.__init__ = wrap(aqt.preferences.Preferences.__init__, __init__, "after")
-aqt.preferences.Preferences.accept = wrap(aqt.preferences.Preferences.accept, accept, "before")
+aqt.preferences.Preferences.__init__ = wrap(aqt.preferences.Preferences.__init__, load, "after")
+aqt.preferences.Preferences.accept = wrap(aqt.preferences.Preferences.accept, save, "before")
