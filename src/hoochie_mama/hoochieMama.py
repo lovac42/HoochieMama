@@ -6,55 +6,25 @@
 # Title is in reference to Seinfeld, no relations to the current slang term.
 
 
-CUSTOM_SORT = {
-  #DEFAULT V2
-  0:["None (Shuffled)", "order by due, random()"],
-
-# == User Config =========================================
-
-  1:["Young first",  "order by ivl asc, random()"],
-  2:["Mature first", "order by ivl desc, random()"],
-  3:["Low reps",     "order by reps asc, random()"],
-  4:["High reps",    "order by reps desc, random()"],
-  5:["Low ease factor",  "order by factor asc, random()"],
-  6:["High ease factor", "order by factor desc, random()"],
-  7:["Low lapses",   "order by lapses asc, random()"],
-  8:["High lapses",  "order by lapses desc, random()"],
-  9:["Overdues",     "order by due asc, random()"],
- 10:["Dues",         "order by due desc, random()"],
-
- 11:["Unrestricted Random (HighCPU)", "order by random()"],
-
-# == End Config ==========================================
-
-}
-
-## Performance Config ####################################
-
-# Performance impact cost O(n)
-# Uses quick shuffle if limit is exceeded.
-DECK_LIST_SHUFFLE_LIMIT = 256
-
-##########################################################
-
-
 import random
 import anki.sched
 from aqt import mw
 from anki.utils import ids2str
-from aqt.utils import showText
 from anki.hooks import wrap
-from anki.lang import _
 
-from anki import version
-ANKI21 = version.startswith("2.1.")
-CCBC = version.endswith("ccbc")
+from .sort import CUSTOM_SORT
+from .utils import *
+from .const import *
+
+
 on_sync=False
 
 
 #Turn this on if you are having problems.
 def debugInfo(msg):
     # print(msg) #console
+
+    # from aqt.utils import showText
     # showText(msg) #Windows
     return
 
@@ -90,6 +60,7 @@ def fillRev(self, _old):
         lim=min(self.queueLimit,lim)
         perDeckLimit=qc.get("hoochieMama",0)==1
         priToday=qc.get("hoochieMama_prioritize_today",False)
+        extShuffle=qc.get("hoochieMama_extra_shuffle",False)
 
         if perDeckLimit:
             self._revQueue=getRevQueuePerSubDeck(self,sortBy,lim,priToday)
@@ -97,10 +68,12 @@ def fillRev(self, _old):
             self._revQueue=getRevQueue(self,sortBy,lim,priToday)
 
         if self._revQueue:
-            if perDeckLimit or qc.get("hoochieMama_extra_shuffle",False):
+            if perDeckLimit or extShuffle==2:
                 random.Random().shuffle(self._revQueue)
-            else:
-                self._revQueue.reverse() #preserve order
+                return True
+            elif extShuffle:
+                self._revQueue=nonuniformShuffle(self._revQueue)
+            self._revQueue.reverse() #preserve order
             return True
 
     if self.revCount:
@@ -141,14 +114,10 @@ def getRevQueuePerSubDeck(sched, sortBy, penetration, priToday=False):
     debugInfo('per subdeck queue builder')
     revQueue=[]
     sched._revDids=sched.col.decks.active()
-    LEN=len(sched._revDids)
-    if LEN>DECK_LIST_SHUFFLE_LIMIT: #segments
-        sched._revDids=cutDecks(sched._revDids,4) #0based
-    else: #shuffle deck ids
-        r=random.Random()
-        r.shuffle(sched._revDids)
+    r=random.Random()
+    r.shuffle(sched._revDids)
 
-    pen=max(5,penetration//LEN) #if div by large val
+    pen=max(5,penetration//len(sched._revDids)) #if div by large val
     for did in sched._revDids:
         d=sched.col.decks.get(did)
         lim=min(pen,deckRevLimitSingle(sched,d)) #find parent limit
@@ -167,21 +136,9 @@ select id from cards where
 did = ? and queue = 2 and due <= ?
 %s limit ?"""%sortBy, did, sched.today, lim)
 
-        revQueue.extend(arr) 
+        revQueue.extend(arr)
         if len(revQueue)>=penetration: break
     return revQueue #randomized later
-
-
-#Like cutting cards, this is a quick and dirty way to randomize the deck ids
-def cutDecks(queue,cnt=0):
-    total=len(queue)
-    p=random.randint(30,70) # %
-    cut=total*p//100
-    if cnt:
-        q=cutDecks(queue[cut:],cnt-1)
-        return q+cutDecks(queue[:cut],cnt-1)
-    return queue[cut:]+queue[:cut]
-
 
 
 #From: anki.schedv2.py
@@ -208,8 +165,6 @@ def deckRevLimitSingle(sched, d, parentLimit=None):
         return lim
 
 
-
-
 #For reviewer count display (cosmetic)
 def resetRevCount(sched, _old):
     if on_sync:
@@ -231,6 +186,7 @@ def _resetRevCountV2(sched):
 select count() from (select id from cards where
 did in %s and queue = 2 and due <= ? limit %d)""" % (
         ids2str(sched.col.decks.active()), lim), sched.today)
+
 
 #From: anki.sched.py
 def _resetRevCountV1(sched):
@@ -269,118 +225,3 @@ def onSync(self):
 
 anki.sync.Syncer.sync=onSync
 
-
-
-##################################################
-#
-#  GUI stuff, adds preference menu options
-#
-#################################################
-import aqt
-import aqt.preferences
-from aqt.qt import *
-
-
-#Must use IF-ELSE, potention exception using try-catch on some systems.
-if ANKI21 and not CCBC:
-    from PyQt5 import QtCore, QtGui, QtWidgets
-else:
-    from PyQt4 import QtCore, QtGui as QtWidgets
-
-
-def setupUi(self, Preferences):
-    try:
-        grid=self.lrnStageGLayout
-    except AttributeError:
-        self.lrnStage=QtWidgets.QWidget()
-        self.tabWidget.addTab(self.lrnStage, "Muffins")
-        self.lrnStageGLayout=QtWidgets.QGridLayout()
-        self.lrnStageVLayout=QtWidgets.QVBoxLayout(self.lrnStage)
-        self.lrnStageVLayout.addLayout(self.lrnStageGLayout)
-        spacerItem=QtWidgets.QSpacerItem(1, 1, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.lrnStageVLayout.addItem(spacerItem)
-
-    r=self.lrnStageGLayout.rowCount()
-    self.hoochieMama=QtWidgets.QCheckBox(self.lrnStage)
-    self.hoochieMama.setText(_('Hoochie Mama! Randomize Queue'))
-    self.hoochieMama.setTristate(True)
-    self.lrnStageGLayout.addWidget(self.hoochieMama, r, 0, 1, 3)
-    self.hoochieMama.clicked.connect(lambda:toggle(self))
-
-    r+=1
-    self.hoochieMamaSortLbl=QtWidgets.QLabel(self.lrnStage)
-    self.hoochieMamaSortLbl.setText(_("      Sort By:"))
-    self.lrnStageGLayout.addWidget(self.hoochieMamaSortLbl, r, 0, 1, 1)
-
-    self.hoochieMamaSort = QtWidgets.QComboBox(self.lrnStage)
-    if ANKI21:
-        itms=CUSTOM_SORT.items()
-    else:
-        itms=CUSTOM_SORT.iteritems()
-    for i,v in itms:
-        self.hoochieMamaSort.addItem(_(""))
-        self.hoochieMamaSort.setItemText(i, _(v[0]))
-    self.lrnStageGLayout.addWidget(self.hoochieMamaSort, r, 1, 1, 2)
-
-    r+=1 #Avoid round-robin reviews
-    self.hoochieMamaPTD=QtWidgets.QCheckBox(self.lrnStage)
-    self.hoochieMamaPTD.setText(_('Prioritize Today?'))
-    self.lrnStageGLayout.addWidget(self.hoochieMamaPTD, r, 1, 1, 3)
-
-    r+=1 #Force Extra shuffle
-    self.hoochieMamaExRand=QtWidgets.QCheckBox(self.lrnStage)
-    self.hoochieMamaExRand.setText(_('Extra Shuffle within each batch?'))
-    self.lrnStageGLayout.addWidget(self.hoochieMamaExRand, r, 1, 1, 3)
-
-
-def load(self, mw):
-    qc = self.mw.col.conf
-    cb=qc.get("hoochieMama", 0)
-    self.form.hoochieMama.setCheckState(cb)
-    cb=qc.get("hoochieMama_prioritize_today", 0)
-    self.form.hoochieMamaPTD.setCheckState(cb)
-
-    cb=qc.get("hoochieMama_extra_shuffle", 0)
-    self.form.hoochieMamaExRand.setCheckState(cb)
-
-    idx=qc.get("hoochieMamaSort", 0)
-    self.form.hoochieMamaSort.setCurrentIndex(idx)
-    toggle(self.form)
-
-
-def save(self):
-    toggle(self.form)
-    qc = self.mw.col.conf
-    qc['hoochieMama']=self.form.hoochieMama.checkState()
-    qc['hoochieMama_prioritize_today']=self.form.hoochieMamaPTD.checkState()
-    qc['hoochieMama_extra_shuffle']=self.form.hoochieMamaExRand.checkState()
-    qc['hoochieMamaSort']=self.form.hoochieMamaSort.currentIndex()
-
-
-def toggle(self):
-    checked=self.hoochieMama.checkState()
-    if checked:
-        try:
-            self.serenityNow.setCheckState(0)
-        except: pass
-        grayout=False
-    else:
-        grayout=True
-
-    if checked==1:
-        txt='Hoochie Mama! RandRevQ w/ subdeck limit'
-        self.hoochieMamaExRand.setDisabled(True)
-        self.hoochieMamaExRand.setText(_('Extra Shuffle (Mandatory)'))
-    else:
-        txt='Hoochie Mama! Randomize Rev Queue'
-        self.hoochieMamaExRand.setDisabled(grayout)
-        self.hoochieMamaExRand.setText(_('Extra Shuffle within each batch?'))
-    self.hoochieMama.setText(_(txt))
-    self.hoochieMamaPTD.setDisabled(grayout)
-    self.hoochieMamaSort.setDisabled(grayout)
-    self.hoochieMamaSortLbl.setDisabled(grayout)
-
-
-aqt.forms.preferences.Ui_Preferences.setupUi = wrap(aqt.forms.preferences.Ui_Preferences.setupUi, setupUi, "after")
-aqt.preferences.Preferences.__init__ = wrap(aqt.preferences.Preferences.__init__, load, "after")
-aqt.preferences.Preferences.accept = wrap(aqt.preferences.Preferences.accept, save, "before")
