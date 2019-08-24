@@ -24,3 +24,9 @@ CUSTOM_SORT = {
 
  11:["Unrestricted Random (HighCPU)",  "order by random()"]
 }
+
+# Difference between #0 and #9:
+# In the current version, they are the same.
+# In the previous versions of V2, cards are sorted
+# by overdues then randomized per batch. whereas,
+# cards sorted in #9 are not randomized.
