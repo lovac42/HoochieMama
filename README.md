@@ -51,4 +51,4 @@ In the event where subdecks have a large amount of overdues and both parent and 
 
 
 ## Sorting:
-<img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/sorting.png.png?raw=true">
+<img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/sorting.png?raw=true">
