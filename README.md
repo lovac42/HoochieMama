@@ -36,6 +36,7 @@ FROM: ```(1,2,5,5,10,12,15,21,22,35,42,54,69...)```
 TO: ```(2,5,1,5,10)```, ```(22,12,21,15)```, ```(54,35,69,42)```
 
 These two modes will be labeled as fine and coarse mode.
+<img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/extra_shuffle.png?raw=true">  
 
 
 ## Configs:
@@ -54,4 +55,3 @@ In the event where subdecks have a large amount of overdues and both parent and 
 <img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/sorting.png?raw=true">  
 
 <img src="https://github.com/lovac42/HoochieMama/blob/master/screenshots/basic.png?raw=true">  
-
