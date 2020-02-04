@@ -17,8 +17,6 @@ from .utils import *
 from .const import *
 
 
-on_sync=False
-
 
 #Turn this on if you are having problems.
 def debugInfo(msg):
@@ -167,7 +165,7 @@ def deckRevLimitSingle(sched, d, parentLimit=None):
 
 #For reviewer count display (cosmetic)
 def resetRevCount(sched, _old):
-    if on_sync:
+    if mw.state == "sync":
         return _old(sched)
 
     qc = sched.col.conf
@@ -211,17 +209,4 @@ if ANKI21:
     import anki.schedv2
     anki.schedv2.Scheduler._fillRev = wrap(anki.schedv2.Scheduler._fillRev, fillRev, 'around')
     anki.schedv2.Scheduler._resetRevCount = wrap(anki.schedv2.Scheduler._resetRevCount, resetRevCount, 'around')
-
-
-
-#This monitor sync start/stops
-oldSync=anki.sync.Syncer.sync
-def onSync(self):
-    global on_sync
-    on_sync=True
-    ret=oldSync(self)
-    on_sync=False
-    return ret
-
-anki.sync.Syncer.sync=onSync
 
