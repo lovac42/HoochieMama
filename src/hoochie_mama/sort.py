@@ -5,7 +5,7 @@
 
 
 CUSTOM_SORT = {
-  0:["None (Default V2)",  "order by due, random()"],
+  0:["None (Equivalent to V2)",  "order by due, random()"],
 
 # == User Config =========================================
 
