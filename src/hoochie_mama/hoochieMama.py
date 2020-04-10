@@ -14,7 +14,7 @@ from anki.hooks import wrap
 
 from .sort import CUSTOM_SORT
 from .utils import *
-from .const import *
+from .lib.com.lovac42.anki.version import ANKI20
 
 
 
@@ -205,7 +205,7 @@ did = ? and queue = 2 and due <= ? limit %d)""" % lim,
 
 anki.sched.Scheduler._fillRev = wrap(anki.sched.Scheduler._fillRev, fillRev, 'around')
 anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around')
-if ANKI21:
+if not ANKI20:
     import anki.schedv2
     anki.schedv2.Scheduler._fillRev = wrap(anki.schedv2.Scheduler._fillRev, fillRev, 'around')
     anki.schedv2.Scheduler._resetRevCount = wrap(anki.schedv2.Scheduler._resetRevCount, resetRevCount, 'around')

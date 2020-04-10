@@ -11,118 +11,135 @@ from anki.lang import _
 from anki.hooks import wrap
 
 from .sort import CUSTOM_SORT
-from .const import *
+from .lib.com.lovac42.anki.version import ANKI21, ANKI20
+from .lib.com.lovac42.anki.gui.checkbox import TristateCheckbox
+from .lib.com.lovac42.anki.gui import muffins
 
-#Must use IF-ELSE, potention exception using try-catch on some systems.
-if ANKI21 and not CCBC:
+
+if ANKI21:
     from PyQt5 import QtCore, QtGui, QtWidgets
 else:
     from PyQt4 import QtCore, QtGui as QtWidgets
 
 
 def setupUi(self, Preferences):
-    try:
-        grid=self.lrnStageGLayout
-    except AttributeError:
-        self.lrnStage=QtWidgets.QWidget()
-        self.tabWidget.addTab(self.lrnStage, "Muffins")
-        self.lrnStageGLayout=QtWidgets.QGridLayout()
-        self.lrnStageVLayout=QtWidgets.QVBoxLayout(self.lrnStage)
-        self.lrnStageVLayout.addLayout(self.lrnStageGLayout)
-        spacerItem=QtWidgets.QSpacerItem(1, 1, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.lrnStageVLayout.addItem(spacerItem)
+    grid_layout = muffins.getMuffinsTab(self)
+    r = grid_layout.rowCount()
+    mama_groupbox = QtWidgets.QGroupBox(self.lrnStage)
+    mama_groupbox.setTitle("Hoochie Mama!")
+    mama_grid_layout = QtWidgets.QGridLayout(mama_groupbox)
+    grid_layout.addWidget(mama_groupbox, r, 0, 1, 3)
 
-    r=self.lrnStageGLayout.rowCount()
-    self.hoochieMama=QtWidgets.QCheckBox(self.lrnStage)
-    self.hoochieMama.setText(_('Hoochie Mama! Randomize Queue'))
-    self.hoochieMama.setTristate(True)
-    self.lrnStageGLayout.addWidget(self.hoochieMama, r, 0, 1, 3)
+    r=0
+
+    self.hoochieMama = TristateCheckbox(mama_groupbox)
+    self.hoochieMama.setDescriptions({
+        Qt.Unchecked:        "Hoochie Mama addon has been disabled",
+        Qt.PartiallyChecked: "Randomize review cards, check subdeck limits",
+        Qt.Checked:          "Randomize review cards, discard subdeck limits (~V2)",
+    })
+
+    mama_grid_layout.addWidget(self.hoochieMama, r, 0, 1, 3)
     self.hoochieMama.clicked.connect(lambda:toggle(self))
 
     r+=1
-    self.hoochieMamaSortLbl=QtWidgets.QLabel(self.lrnStage)
-    self.hoochieMamaSortLbl.setText(_("      Sort RevQ By:"))
-    self.lrnStageGLayout.addWidget(self.hoochieMamaSortLbl, r, 0, 1, 1)
+    self.hoochieMamaSortLbl=QtWidgets.QLabel(mama_groupbox)
+    self.hoochieMamaSortLbl.setText(_("      Sort reviews by:"))
+    mama_grid_layout.addWidget(self.hoochieMamaSortLbl, r, 0, 1, 1)
 
-    self.hoochieMamaSort = QtWidgets.QComboBox(self.lrnStage)
-    if ANKI21:
-        itms=CUSTOM_SORT.items()
-    else:
-        itms=CUSTOM_SORT.iteritems()
-    for i,v in itms:
+    self.hoochieMamaSort = QtWidgets.QComboBox(mama_groupbox)
+
+    sort_itms = CUSTOM_SORT.iteritems if ANKI20 else CUSTOM_SORT.items
+    for i,v in sort_itms():
         self.hoochieMamaSort.addItem(_(""))
         self.hoochieMamaSort.setItemText(i, _(v[0]))
-    self.lrnStageGLayout.addWidget(self.hoochieMamaSort, r, 1, 1, 2)
+    mama_grid_layout.addWidget(self.hoochieMamaSort, r, 1, 1, 3)
 
     r+=1 #Avoid round-robin reviews
-    self.hoochieMamaPTD=QtWidgets.QCheckBox(self.lrnStage)
-    self.hoochieMamaPTD.setText(_("Prioritize today's revs first?"))
-    self.lrnStageGLayout.addWidget(self.hoochieMamaPTD, r, 1, 1, 3)
+    self.hoochieMamaPTD=QtWidgets.QCheckBox(mama_groupbox)
+    self.hoochieMamaPTD.setText(_("Prioritize the reviews due today first?"))
+    mama_grid_layout.addWidget(self.hoochieMamaPTD, r, 1, 1, 3)
 
     r+=1 #Force Extra shuffle
-    self.hoochieMamaExRand=QtWidgets.QCheckBox(self.lrnStage)
-    self.hoochieMamaExRand.setText(_('Use Extra Shuffle?'))
-    self.hoochieMamaExRand.setTristate(True)
-    self.lrnStageGLayout.addWidget(self.hoochieMamaExRand, r, 1, 1, 3)
-    self.hoochieMamaExRand.clicked.connect(lambda:togExtRand(self))
+    self.hoochieMamaExRand = TristateCheckbox(mama_groupbox)
+    self.hoochieMamaExRand.setDescriptions({
+        Qt.Unchecked:        "Add Extra Shuffle?",
+        Qt.PartiallyChecked: "Extra Shuffle: Fine (e.g. 1,5,3,2)",
+        Qt.Checked:          "Extra Shuffle: Coarse (e.g. 3,25,9,6)",
+    })
+    mama_grid_layout.addWidget(self.hoochieMamaExRand, r, 1, 1, 3)
+
+
 
 def load(self, mw):
     qc = self.mw.col.conf
-    cb=qc.get("hoochieMama", 0)
+
+    cb=qc.get("hoochieMama", Qt.Unchecked)
     self.form.hoochieMama.setCheckState(cb)
-    cb=qc.get("hoochieMama_prioritize_today", 0)
+
+    cb=qc.get("hoochieMama_prioritize_today", Qt.Unchecked)
     self.form.hoochieMamaPTD.setCheckState(cb)
 
-    cb=qc.get("hoochieMama_extra_shuffle", 0)
+    cb=qc.get("hoochieMama_extra_shuffle", Qt.Unchecked)
     self.form.hoochieMamaExRand.setCheckState(cb)
 
     idx=qc.get("hoochieMamaSort", 0)
     self.form.hoochieMamaSort.setCurrentIndex(idx)
+
     toggle(self.form)
+
 
 
 def save(self):
     toggle(self.form)
     qc = self.mw.col.conf
-    qc['hoochieMama']=self.form.hoochieMama.checkState()
-    qc['hoochieMama_prioritize_today']=self.form.hoochieMamaPTD.checkState()
-    qc['hoochieMama_extra_shuffle']=self.form.hoochieMamaExRand.checkState()
+
+    qc['hoochieMama']=int(self.form.hoochieMama.checkState())
+    qc['hoochieMama_prioritize_today']=int(self.form.hoochieMamaPTD.checkState())
+    qc['hoochieMama_extra_shuffle']=int(self.form.hoochieMamaExRand.checkState())
+
     qc['hoochieMamaSort']=self.form.hoochieMamaSort.currentIndex()
+
 
 
 def toggle(self):
     checked=self.hoochieMama.checkState()
     if checked:
         try:
-            self.serenityNow.setCheckState(0)
+            self.serenityNow.setCheckState(Qt.Unchecked)
         except: pass
-        grayout=False
+        grayout = False
     else:
-        grayout=True
+        grayout = True
 
-    if checked==1:
-        txt='Hoochie Mama! RandRevQ w/ subdeck limit'
-        self.hoochieMamaExRand.setDisabled(True)
+    if checked == Qt.PartiallyChecked:
         self.hoochieMamaExRand.setText(_('Extra Shuffle (Mandatory)'))
+        self.hoochieMamaExRand.setDisabled(True)
     else:
-        txt='Hoochie Mama! Randomize Rev Queue'
         self.hoochieMamaExRand.setDisabled(grayout)
-        togExtRand(self)
-    self.hoochieMama.setText(_(txt))
+        #refresh checkbox desc text
+        s = self.hoochieMamaExRand.checkState()
+        self.hoochieMamaExRand.onStateChanged(s)
+
     self.hoochieMamaPTD.setDisabled(grayout)
     self.hoochieMamaSort.setDisabled(grayout)
     self.hoochieMamaSortLbl.setDisabled(grayout)
 
-def togExtRand(self):
-    checked=self.hoochieMamaExRand.checkState()
-    if checked==2: #hoochie overwhelming
-        self.hoochieMamaExRand.setText(_('Extra Shuffle: Coarse (e.g. 3,25,9,6)'))
-    elif checked==1: #less hoochie
-        self.hoochieMamaExRand.setText(_('Extra Shuffle: Fine (e.g. 1,5,3,2)'))
-    else:
-        self.hoochieMamaExRand.setText(_('Use Extra Shuffle?'))
 
 
-aqt.forms.preferences.Ui_Preferences.setupUi = wrap(aqt.forms.preferences.Ui_Preferences.setupUi, setupUi, "after")
-aqt.preferences.Preferences.__init__ = wrap(aqt.preferences.Preferences.__init__, load, "after")
-aqt.preferences.Preferences.accept = wrap(aqt.preferences.Preferences.accept, save, "before")
+
+
+# if point version < 23? Use old wrap
+# TODO: Find the point version for these new hooks.
+
+aqt.forms.preferences.Ui_Preferences.setupUi = wrap(
+    aqt.forms.preferences.Ui_Preferences.setupUi, setupUi, "after")
+
+aqt.preferences.Preferences.__init__ = wrap(
+    aqt.preferences.Preferences.__init__, load, "after"
+)
+
+aqt.preferences.Preferences.accept = wrap(
+    aqt.preferences.Preferences.accept, save, "before"
+)
+
