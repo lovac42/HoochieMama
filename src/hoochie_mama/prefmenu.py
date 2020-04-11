@@ -28,7 +28,8 @@ def setupUi(self, Preferences):
         Qt.Checked:          "Randomize review cards, discard subdeck limits (~V2)",
     })
     mama_grid_layout.addWidget(self.hoochieMama, r, 0, 1, 3)
-    self.hoochieMama.clicked.connect(lambda:toggle(self))
+    self.hoochieMama.clicked.connect(lambda:onClick(self))
+    self.hoochieMama.onClick = onClick
 
     r+=1
     self.hoochieMamaSortLbl=QLabel(mama_groupbox)
@@ -73,12 +74,12 @@ def load(self, mw):
     idx=qc.get("hoochieMamaSort", 0)
     self.form.hoochieMamaSort.setCurrentIndex(idx)
 
-    toggle(self.form)
+    onClick(self.form)
 
 
 
 def save(self):
-    toggle(self.form)
+    onClick(self.form)
     qc = self.mw.col.conf
 
     qc['hoochieMama']=int(self.form.hoochieMama.checkState())
@@ -89,27 +90,27 @@ def save(self):
 
 
 
-def toggle(self):
-    state = self.hoochieMama.checkState()
+def onClick(form):
+    state = form.hoochieMama.checkState()
     if state:
         try:
-            self.serenityNow.setCheckState(Qt.Unchecked)
+            form.serenityNow.setCheckState(Qt.Unchecked)
         except: pass
 
     grayout = state == Qt.Unchecked
 
     if state == Qt.PartiallyChecked:
-        self.hoochieMamaExRand.setText(_('Extra Shuffle (Mandatory)'))
-        self.hoochieMamaExRand.setDisabled(True)
+        form.hoochieMamaExRand.setText(_('Extra Shuffle (Mandatory)'))
+        form.hoochieMamaExRand.setDisabled(True)
     else:
-        self.hoochieMamaExRand.setDisabled(grayout)
+        form.hoochieMamaExRand.setDisabled(grayout)
         #refresh checkbox desc text
-        s = self.hoochieMamaExRand.checkState()
-        self.hoochieMamaExRand.onStateChanged(s)
+        s = form.hoochieMamaExRand.checkState()
+        form.hoochieMamaExRand.onStateChanged(s)
 
-    self.hoochieMamaPTD.setDisabled(grayout)
-    self.hoochieMamaSort.setDisabled(grayout)
-    self.hoochieMamaSortLbl.setDisabled(grayout)
+    form.hoochieMamaPTD.setDisabled(grayout)
+    form.hoochieMamaSort.setDisabled(grayout)
+    form.hoochieMamaSortLbl.setDisabled(grayout)
 
 
 
