@@ -22,3 +22,15 @@ def getMuffinsTab(ui_pref):
         )
         ui_pref.lrnStageVLayout.addItem(spacerItem)
         return ui_pref.lrnStageGLayout
+
+
+def getMuffinsGroupbox(ui_pref, title):
+    tab_layout = getMuffinsTab(ui_pref)
+    groupbox = ui_pref.lrnStage.findChild(QGroupBox, title)
+    if not groupbox:
+        groupbox = QGroupBox(ui_pref.lrnStage)
+        groupbox.setObjectName(title)
+        groupbox.setTitle(title)
+        r = tab_layout.rowCount()
+        tab_layout.addWidget(groupbox, r, 0, 1, 3)
+    return groupbox

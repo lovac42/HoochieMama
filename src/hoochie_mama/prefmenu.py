@@ -11,44 +11,31 @@ from anki.lang import _
 from anki.hooks import wrap
 
 from .sort import CUSTOM_SORT
-from .lib.com.lovac42.anki.version import ANKI21, ANKI20
+from .lib.com.lovac42.anki.version import ANKI20
 from .lib.com.lovac42.anki.gui.checkbox import TristateCheckbox
 from .lib.com.lovac42.anki.gui import muffins
 
 
-if ANKI21:
-    from PyQt5 import QtCore, QtGui, QtWidgets
-else:
-    from PyQt4 import QtCore, QtGui as QtWidgets
-
-
 def setupUi(self, Preferences):
-    grid_layout = muffins.getMuffinsTab(self)
-    r = grid_layout.rowCount()
-    mama_groupbox = QtWidgets.QGroupBox(self.lrnStage)
-    mama_groupbox.setTitle("Hoochie Mama!")
-    mama_grid_layout = QtWidgets.QGridLayout(mama_groupbox)
-    grid_layout.addWidget(mama_groupbox, r, 0, 1, 3)
+    mama_groupbox = muffins.getMuffinsGroupbox(self, "Hoochie Mama!")
+    mama_grid_layout = QGridLayout(mama_groupbox)
 
     r=0
-
     self.hoochieMama = TristateCheckbox(mama_groupbox)
     self.hoochieMama.setDescriptions({
         Qt.Unchecked:        "Hoochie Mama addon has been disabled",
         Qt.PartiallyChecked: "Randomize review cards, check subdeck limits",
         Qt.Checked:          "Randomize review cards, discard subdeck limits (~V2)",
     })
-
     mama_grid_layout.addWidget(self.hoochieMama, r, 0, 1, 3)
     self.hoochieMama.clicked.connect(lambda:toggle(self))
 
     r+=1
-    self.hoochieMamaSortLbl=QtWidgets.QLabel(mama_groupbox)
+    self.hoochieMamaSortLbl=QLabel(mama_groupbox)
     self.hoochieMamaSortLbl.setText(_("      Sort reviews by:"))
     mama_grid_layout.addWidget(self.hoochieMamaSortLbl, r, 0, 1, 1)
 
-    self.hoochieMamaSort = QtWidgets.QComboBox(mama_groupbox)
-
+    self.hoochieMamaSort = QComboBox(mama_groupbox)
     sort_itms = CUSTOM_SORT.iteritems if ANKI20 else CUSTOM_SORT.items
     for i,v in sort_itms():
         self.hoochieMamaSort.addItem(_(""))
@@ -56,7 +43,7 @@ def setupUi(self, Preferences):
     mama_grid_layout.addWidget(self.hoochieMamaSort, r, 1, 1, 3)
 
     r+=1 #Avoid round-robin reviews
-    self.hoochieMamaPTD=QtWidgets.QCheckBox(mama_groupbox)
+    self.hoochieMamaPTD = QCheckBox(mama_groupbox)
     self.hoochieMamaPTD.setText(_("Prioritize the reviews due today first?"))
     mama_grid_layout.addWidget(self.hoochieMamaPTD, r, 1, 1, 3)
 
@@ -103,16 +90,15 @@ def save(self):
 
 
 def toggle(self):
-    checked=self.hoochieMama.checkState()
-    if checked:
+    state = self.hoochieMama.checkState()
+    if state:
         try:
             self.serenityNow.setCheckState(Qt.Unchecked)
         except: pass
-        grayout = False
-    else:
-        grayout = True
 
-    if checked == Qt.PartiallyChecked:
+    grayout = state == Qt.Unchecked
+
+    if state == Qt.PartiallyChecked:
         self.hoochieMamaExRand.setText(_('Extra Shuffle (Mandatory)'))
         self.hoochieMamaExRand.setDisabled(True)
     else:
@@ -128,6 +114,7 @@ def toggle(self):
 
 
 
+# Wrap Crap ############
 
 # if point version < 23? Use old wrap
 # TODO: Find the point version for these new hooks.
