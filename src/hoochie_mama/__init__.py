@@ -6,4 +6,3 @@
 
 from . import prefmenu
 from . import hoochieMama
-from . import comp
