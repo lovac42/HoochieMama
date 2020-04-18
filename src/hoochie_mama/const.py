@@ -4,6 +4,10 @@
 # License: GNU GPL, version 3 or later; http://www.gnu.org/copyleft/gpl.html
 
 
+import os
+
+ADDON_PATH = os.path.dirname(__file__)
+
 ADDON_NAME = "HoochieMama"
 
 TARGET_STABLE_VERSION = 23
