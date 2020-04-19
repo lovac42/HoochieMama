@@ -2,7 +2,7 @@
 set ZIP=C:\PROGRA~1\7-Zip\7z.exe a -tzip -y -r
 set REPO=hoochie_mama
 set PACKID=1460733408
-set VERSION=0.3.5
+set VERSION=0.4.0
 
 echo %VERSION% >%REPO%\VERSION
 
@@ -15,5 +15,5 @@ cd %REPO%
 quick_manifest.exe "Hoochie Mama: RevQ" "%PACKID%" >manifest.json
 %ZIP% ../%REPO%_v%VERSION%_Anki21.ankiaddon *
 
-quick_manifest.exe "Hoochie Mama: RevQ" "hoochie_mama" >manifest.json
+quick_manifest.exe "Hoochie Mama: RevQ" "%REPO%" >manifest.json
 %ZIP% ../%REPO%_v%VERSION%_CCBC.adze *
