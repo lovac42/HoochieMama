@@ -13,22 +13,14 @@ from anki.utils import ids2str
 from anki.hooks import wrap
 
 from .sort import CUSTOM_SORT
+from .self_test import run_tests
 from .utils import *
 from .lib.com.lovac42.anki.version import ANKI20
 
+RAND = random.Random().shuffle
 
 
-#Turn this on if you are having problems.
-def debugInfo(msg):
-    # print(msg) #console
 
-    # from aqt.utils import showText
-    # showText(msg) #Windows
-    return
-
-
-#From: anki.schedv2.py
-#Mod:  Various, see logs
 def fillRev(self, _old):
     if self._revQueue:
         return True
@@ -38,15 +30,16 @@ def fillRev(self, _old):
 
     # This seem like old comments left behind, and does not affect current versions.
     # Remove these lines for testing
-    if self.col.decks.get(self.col.decks.selected(),False)['dyn']:
+    if self.col.decks.current()['dyn']:
         # dynamic decks need due order preserved
+        run_tests.state = 3
         return _old(self)
 
 
     qc = self.col.conf
     if not qc.get("hoochieMama",0):
+        run_tests.state = 0
         return _old(self)
-    debugInfo('using hoochieMama')
 
 
     lim=currentRevLimit(self)
@@ -67,7 +60,7 @@ def fillRev(self, _old):
 
         if self._revQueue:
             if perDeckLimit or extShuffle==2:
-                random.Random().shuffle(self._revQueue)
+                RAND(self._revQueue)
                 return True
             elif extShuffle:
                 self._revQueue=nonuniformShuffle(self._revQueue)
@@ -86,7 +79,8 @@ def fillRev(self, _old):
 # In the world of blackjack, “penetration”, or “deck penetration”, 
 # is the amount of cards that the dealer cuts off, relative to the cards dealt out.
 def getRevQueue(sched, sortBy, penetration, priToday=False):
-    debugInfo('v2 queue builder')
+    run_tests.state = 2
+
     deckList=ids2str(sched.col.decks.active())
     revQueue=[]
 
@@ -109,13 +103,13 @@ did in %s and queue = 2 and due <= ?
 
 
 def getRevQueuePerSubDeck(sched, sortBy, penetration, priToday=False):
-    debugInfo('per subdeck queue builder')
-    revQueue=[]
-    sched._revDids=sched.col.decks.active()
-    r=random.Random()
-    r.shuffle(sched._revDids)
+    run_tests.state = 1
 
-    pen=max(5,penetration//len(sched._revDids)) #if div by large val
+    revQueue=[]
+    sched._revDids=sched.col.decks.active()[:]
+    RAND(sched._revDids)
+
+    pen=max(3,penetration//len(sched._revDids)) #if div by large val
     for did in sched._revDids:
         d=sched.col.decks.get(did)
         lim=min(pen,deckRevLimitSingle(sched,d)) #find parent limit
@@ -203,10 +197,21 @@ did = ? and queue = 2 and due <= ? limit %d)""" % lim,
 
 
 
-anki.sched.Scheduler._fillRev = wrap(anki.sched.Scheduler._fillRev, fillRev, 'around')
-anki.sched.Scheduler._resetRevCount = wrap(anki.sched.Scheduler._resetRevCount, resetRevCount, 'around')
+
+
+anki.sched.Scheduler._fillRev = wrap(
+    anki.sched.Scheduler._fillRev, fillRev, 'around'
+)
+anki.sched.Scheduler._resetRevCount = wrap(
+    anki.sched.Scheduler._resetRevCount, resetRevCount, 'around'
+)
+
 if not ANKI20:
     import anki.schedv2
-    anki.schedv2.Scheduler._fillRev = wrap(anki.schedv2.Scheduler._fillRev, fillRev, 'around')
-    anki.schedv2.Scheduler._resetRevCount = wrap(anki.schedv2.Scheduler._resetRevCount, resetRevCount, 'around')
+    anki.schedv2.Scheduler._fillRev = wrap(
+        anki.schedv2.Scheduler._fillRev, fillRev, 'around'
+    )
+    anki.schedv2.Scheduler._resetRevCount = wrap(
+        anki.schedv2.Scheduler._resetRevCount, resetRevCount, 'around'
+    )
 

@@ -6,11 +6,13 @@
 
 import aqt
 import aqt.preferences
+from aqt import mw
 from aqt.qt import *
 from anki.lang import _
 from anki.hooks import wrap
 
-from .sort import CUSTOM_SORT
+from .sort import CUSTOM_SORT, VANGUARD
+from .self_test import run_tests
 from .lib.com.lovac42.anki.version import ANKI20
 from .lib.com.lovac42.anki.gui.checkbox import TristateCheckbox
 from .lib.com.lovac42.anki.gui import muffins
@@ -32,7 +34,7 @@ def setupUi(self, Preferences):
     self.hoochieMama.onClick = onClick
 
     r+=1
-    self.hoochieMamaSortLbl=QLabel(mama_groupbox)
+    self.hoochieMamaSortLbl = QLabel(mama_groupbox)
     self.hoochieMamaSortLbl.setText(_("      Sort reviews by:"))
     mama_grid_layout.addWidget(self.hoochieMamaSortLbl, r, 0, 1, 1)
 
@@ -44,8 +46,20 @@ def setupUi(self, Preferences):
     mama_grid_layout.addWidget(self.hoochieMamaSort, r, 1, 1, 3)
 
     r+=1 #Avoid round-robin reviews
-    self.hoochieMamaPTD = QCheckBox(mama_groupbox)
-    self.hoochieMamaPTD.setText(_("Prioritize the reviews due today first?"))
+    self.hoochieMamaPTD = TristateCheckbox(mama_groupbox)
+    if not VANGUARD:
+        self.hoochieMamaPTD.setTristate(False)
+        self.hoochieMamaPTD.setDescriptions({
+            Qt.Unchecked:        "Set prioritization criteria?",
+            Qt.PartiallyChecked: "Error you should not see this",
+            Qt.Checked:          "Prioritize young cards due today",
+        })
+    else:
+        self.hoochieMamaPTD.setDescriptions({
+            Qt.Unchecked:        "Fast, no comparisons",
+            Qt.PartiallyChecked: "Compare with ANN",
+            Qt.Checked:          "Compare with SM8DLL",
+        })
     mama_grid_layout.addWidget(self.hoochieMamaPTD, r, 1, 1, 3)
 
     r+=1 #Force Extra shuffle
@@ -57,40 +71,60 @@ def setupUi(self, Preferences):
     })
     mama_grid_layout.addWidget(self.hoochieMamaExRand, r, 1, 1, 3)
 
+    if VANGUARD:
+        r+=1
+        self.hoochieMamaVdLbl = QtWidgets.QLabel(mama_groupbox)
+        self.hoochieMamaVdLbl.setText(_("      Transformations:"))
+        mama_grid_layout.addWidget(self.hoochieMamaVdLbl, r, 0, 1, 1)
+        self.hoochieMamaVd = QtWidgets.QComboBox(mama_groupbox)
+
+        sort_itms = VANGUARD.iteritems if ANKI20 else VANGUARD.items
+        for i,v in sort_itms():
+            self.hoochieMamaVd.addItem("")
+            self.hoochieMamaVd.setItemText(i, _(v[0]))
+        mama_grid_layout.addWidget(self.hoochieMamaVd, r, 1, 1, 3)
 
 
 def load(self, mw):
     qc = self.mw.col.conf
 
-    cb=qc.get("hoochieMama", Qt.Unchecked)
+    cb = qc.get("hoochieMama", Qt.Unchecked)
     self.form.hoochieMama.setCheckState(cb)
 
-    cb=qc.get("hoochieMama_prioritize_today", Qt.Unchecked)
+    cb = qc.get("hoochieMama_prioritize_today", Qt.Unchecked)
     self.form.hoochieMamaPTD.setCheckState(cb)
 
-    cb=qc.get("hoochieMama_extra_shuffle", Qt.Unchecked)
+    cb = qc.get("hoochieMama_extra_shuffle", Qt.Unchecked)
     self.form.hoochieMamaExRand.setCheckState(cb)
 
-    idx=qc.get("hoochieMamaSort", 0)
+    idx = qc.get("hoochieMamaSort", 0)
     self.form.hoochieMamaSort.setCurrentIndex(idx)
 
-    onClick(self.form)
+    if VANGUARD:
+        idx = qc.get("hoochieMamaVd", 0)
+        self.form.hoochieMamaVd.setCurrentIndex(idx)
 
+    _updateDisplay(self.form)
 
 
 def save(self):
-    onClick(self.form)
     qc = self.mw.col.conf
-
-    qc['hoochieMama']=int(self.form.hoochieMama.checkState())
-    qc['hoochieMama_prioritize_today']=int(self.form.hoochieMamaPTD.checkState())
-    qc['hoochieMama_extra_shuffle']=int(self.form.hoochieMamaExRand.checkState())
-
-    qc['hoochieMamaSort']=self.form.hoochieMamaSort.currentIndex()
-
+    qc['hoochieMama'] = int(self.form.hoochieMama.checkState())
+    qc['hoochieMama_prioritize_today'] = int(self.form.hoochieMamaPTD.checkState())
+    qc['hoochieMama_extra_shuffle'] = int(self.form.hoochieMamaExRand.checkState())
+    qc['hoochieMamaSort'] = self.form.hoochieMamaSort.currentIndex()
+    if VANGUARD:
+        qc['hoochieMamaVd'] = self.form.hoochieMamaVd.currentIndex()
 
 
 def onClick(form):
+    state = int(form.hoochieMama.checkState())
+    mw.col.conf['hoochieMama'] = state
+    _updateDisplay(form)
+    run_tests.testWrap(state)
+
+
+def _updateDisplay(form):
     state = form.hoochieMama.checkState()
     if state:
         try:
@@ -112,6 +146,9 @@ def onClick(form):
     form.hoochieMamaSort.setDisabled(grayout)
     form.hoochieMamaSortLbl.setDisabled(grayout)
 
+    if VANGUARD:
+        form.hoochieMamaVd.setDisabled(grayout)
+        form.hoochieMamaVdLbl.setDisabled(grayout)
 
 
 

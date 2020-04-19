@@ -30,3 +30,7 @@ CUSTOM_SORT = {
 # In the previous versions of V2, cards are sorted
 # by overdues then randomized per batch. whereas,
 # cards sorted in #9 are not randomized.
+
+
+
+VANGUARD = {}
