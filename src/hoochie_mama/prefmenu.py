@@ -18,6 +18,9 @@ from .lib.com.lovac42.anki.gui.checkbox import TristateCheckbox
 from .lib.com.lovac42.anki.gui import muffins
 
 
+loaded = False
+
+
 def setupUi(self, Preferences):
     mama_groupbox = muffins.getMuffinsGroupbox(self, "Hoochie Mama!")
     mama_grid_layout = QGridLayout(mama_groupbox)
@@ -44,6 +47,9 @@ def setupUi(self, Preferences):
         self.hoochieMamaSort.addItem(_(""))
         self.hoochieMamaSort.setItemText(i, _(v[0]))
     mama_grid_layout.addWidget(self.hoochieMamaSort, r, 1, 1, 3)
+    self.hoochieMamaSort.currentIndexChanged.connect(
+        lambda:onChanged(self.hoochieMamaSort,"hoochieMamaSort")
+    )
 
     r+=1 #Avoid round-robin reviews
     self.hoochieMamaPTD = TristateCheckbox(mama_groupbox)
@@ -61,6 +67,9 @@ def setupUi(self, Preferences):
             Qt.Checked:          "Compare with SM8DLL",
         })
     mama_grid_layout.addWidget(self.hoochieMamaPTD, r, 1, 1, 3)
+    self.hoochieMamaPTD.clicked.connect(
+        lambda:onClickEx(self.hoochieMamaPTD,"hoochieMama_prioritize_today")
+    )
 
     r+=1 #Force Extra shuffle
     self.hoochieMamaExRand = TristateCheckbox(mama_groupbox)
@@ -70,6 +79,9 @@ def setupUi(self, Preferences):
         Qt.Checked:          "Extra Shuffle: Coarse (e.g. 3,25,9,6)",
     })
     mama_grid_layout.addWidget(self.hoochieMamaExRand, r, 1, 1, 3)
+    self.hoochieMamaExRand.clicked.connect(
+        lambda:onClickEx(self.hoochieMamaExRand,"hoochieMama_extra_shuffle")
+    )
 
     if VANGUARD:
         r+=1
@@ -83,9 +95,13 @@ def setupUi(self, Preferences):
             self.hoochieMamaVd.addItem("")
             self.hoochieMamaVd.setItemText(i, _(v[0]))
         mama_grid_layout.addWidget(self.hoochieMamaVd, r, 1, 1, 3)
+        self.hoochieMamaVd.currentIndexChanged.connect(
+            lambda:onChanged(self.hoochieMamaVd, "hoochieMamaVd")
+        )
 
 
 def load(self, mw):
+    global loaded
     qc = self.mw.col.conf
 
     cb = qc.get("hoochieMama", Qt.Unchecked)
@@ -105,16 +121,12 @@ def load(self, mw):
         self.form.hoochieMamaVd.setCurrentIndex(idx)
 
     _updateDisplay(self.form)
+    loaded = True
 
 
 def save(self):
-    qc = self.mw.col.conf
-    qc['hoochieMama'] = int(self.form.hoochieMama.checkState())
-    qc['hoochieMama_prioritize_today'] = int(self.form.hoochieMamaPTD.checkState())
-    qc['hoochieMama_extra_shuffle'] = int(self.form.hoochieMamaExRand.checkState())
-    qc['hoochieMamaSort'] = self.form.hoochieMamaSort.currentIndex()
-    if VANGUARD:
-        qc['hoochieMamaVd'] = self.form.hoochieMamaVd.currentIndex()
+    global loaded
+    loaded = False
 
 
 def onClick(form):
@@ -122,6 +134,20 @@ def onClick(form):
     mw.col.conf['hoochieMama'] = state
     _updateDisplay(form)
     run_tests.testWrap(state)
+
+
+def onClickEx(checkbox, key):
+    state = int(checkbox.checkState())
+    mw.col.conf[key] = state
+    idx = mw.col.conf["hoochieMamaSort"]
+    run_tests.testSort(idx)
+
+
+def onChanged(combobox, key):
+    idx = combobox.currentIndex()
+    mw.col.conf[key] = idx
+    if loaded:
+        run_tests.testSort(idx)
 
 
 def _updateDisplay(form):
