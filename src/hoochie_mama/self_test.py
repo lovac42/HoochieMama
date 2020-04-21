@@ -7,6 +7,8 @@
 from aqt import mw
 from aqt.utils import tooltip
 
+from .const import ADDON_NAME
+from .config import Config
 from .lib.com.lovac42.anki.backend.utils import isSorted
 from .lib.com.lovac42.anki.version import ANKI20
 
@@ -15,6 +17,8 @@ if ANKI20:
 
 
 class Tests:
+    conf = Config(ADDON_NAME)
+
     def __init__(self):
         self.reset()
 
@@ -37,7 +41,7 @@ class Tests:
         return sel
 
     def testWrap(self, checkbox):
-        if self.isReview():
+        if not self.conf.get("run_self_test", True) or self.isReview():
             return
 
         self.reset()
@@ -60,9 +64,8 @@ class Tests:
             raise ValueError("Checkbox state was not expected.")
 
 
-
     def testSort(self, index):
-        if self.isReview():
+        if not self.conf.get("run_self_test", True) or self.isReview():
             return
 
         expected=0
