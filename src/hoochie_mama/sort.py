@@ -19,7 +19,7 @@ CUSTOM_SORT = {
   8:["High lapses count first (desc)", "order by lapses desc, random()"],
   9:["Overdue cards first (asc)",      "order by due asc, random()"],
  10:["Punctual cards first (desc)",    "order by due desc, random()"],
- 11:["Unrestricted Random (HighCPU)",  "order by random()"]
+ 11:["Unrestricted Random (High CPU)",  "order by random()"]
 }
 
 # Difference between #0 and #9:
