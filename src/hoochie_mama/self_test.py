@@ -25,32 +25,47 @@ class Tests:
     def reset(self):
         self.state = -1
 
-    def isReview(self):
+    def _isReview(self):
         if mw.state == "review":
             tooltip("Mama can't run self-tests during review.", period=1200)
             return True
 
-    def setupTestDeck(self):
-        sel = mw.col.decks.selected()
-        mw.col.decks.select(1)
-        mw.col.sched._revDids = [1]
+    def _selectDeck(self, did=1):
+        old_did = mw.col.decks.selected()
+        mw.col.decks.select(did)
+        mw.col.sched._revDids = [did]
+        return old_did
+
+    def _restoreDeck(self, did):
+        mw.col.decks.select(did)
+        mw.col.sched._resetRev()
+
+    def _setupTestCounts(self):
         mw.col.sched.newCount = 20
         mw.col.sched.revCount = 20
         mw.col.sched.lrnCount = 20
         mw.col.sched._revQueue = []
-        return sel
+
+    def _isShuffled(self, index):
+        mama_checkbox = mw.col.conf.get("hoochieMama", 1)
+        if mama_checkbox==2:
+            shuffle = mw.col.conf.get("hoochieMama_extra_shuffle", 0)
+        else:
+            shuffle = 2 #mandatory
+        return shuffle or index in (0,11)
+
 
     def testWrap(self, checkbox):
-        if not self.conf.get("run_self_test", True) or self.isReview():
+        if not self.conf.get("run_self_test_wrap", True) or self._isReview():
             return
 
         self.reset()
-        sel = self.setupTestDeck()
+        self._setupTestCounts()
+        old_did = self._selectDeck(1)
         try:
             mw.col.sched._fillRev()
         finally:
-            mw.col.decks.select(sel)
-            mw.col.sched._resetRev()
+            self._restoreDeck(old_did)
 
         assert checkbox == self.state, "HoochieMama, self-test failed. Test value was not as expected."
 
@@ -65,24 +80,27 @@ class Tests:
 
 
     def testSort(self, index):
-        if not self.conf.get("run_self_test", True) or self.isReview():
+        if not self.conf.get("run_self_test_sort", False) or self._isReview():
             return
+        if index > 11:
+            raise ValueError("Index was not expected.")
 
         expected=0
-        for i in range(5):
-            r = self._testSort(index)
-            if r < 0:
-                tooltip("Mama can't run self-tests. Not enough cards in default deck for testing.", period=2000)
-                return
-            expected += r
+        old_did = self._selectDeck(1)
+        try:
+            for i in range(5):
+                r = self._testSort(index)
+                if r < 0:
+                    tooltip("Mama can't run self-tests. Not enough cards in default deck for testing.", period=2000)
+                    return
+                expected += r
+        finally:
+            self._restoreDeck(old_did)
 
-        mama_checkbox = mw.col.conf['hoochieMama']
-        shuffle = mw.col.conf['hoochieMama_extra_shuffle']
-        rand_opts = bool(shuffle or mama_checkbox)
-        rand = rand_opts or index in (0,11)
+        shuffle = self._isShuffled(index)
 
         # ensure a pass-rate of 3/5 due to unpredictable randomness.
-        assert expected == 5 or (rand and expected >= 3), "HoochieMama, self-test failed. Tested values were not as expected."
+        assert expected == 5 or (shuffle and expected >= 3), "HoochieMama, self-test failed. Tested values were not as expected."
 
         tooltip("Mama sort-test: OK", period=800)
 
@@ -91,16 +109,10 @@ class Tests:
     def _testSort(self, index):
         "This test require some cards put inside the Default anki folder."
         self.reset()
-        sel = self.setupTestDeck()
+        self._setupTestCounts()
 
-        cids = None
-        try:
-            mw.col.sched._fillRev()
-            cids = mw.col.sched._revQueue[:]
-        finally:
-            mw.col.decks.select(sel)
-            mw.col.sched._resetRev()
-
+        mw.col.sched._fillRev()
+        cids = mw.col.sched._revQueue
         if not cids or len(cids)<10:
             return -1
 
@@ -123,13 +135,10 @@ class Tests:
         # print(arr)
 
         dr = False #desired result
-        mama_checkbox = mw.col.conf['hoochieMama']
-        shuffle = mw.col.conf['hoochieMama_extra_shuffle']
-        test_sort = not shuffle and mama_checkbox==2
-
-        if test_sort and index in (1,3,5,7,9):
+        shuffle = self._isShuffled(index)
+        if not shuffle and index in (1,3,5,7,9):
             dr = isSorted(arr, key=lambda x, y: x >= y)
-        elif test_sort and index in (2,4,6,8,10):
+        elif not shuffle and index in (2,4,6,8,10):
             dr = isSorted(arr, key=lambda x, y: x <= y)
         else: #idx = 0 or 11, test random
             #TODO:
