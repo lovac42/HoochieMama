@@ -137,7 +137,7 @@ def onClick(form):
 def onClickEx(checkbox, key):
     state = int(checkbox.checkState())
     mw.col.conf[key] = state
-    idx = mw.col.conf["hoochieMamaSort"]
+    idx = mw.col.conf.get("hoochieMamaSort", 0)
     run_tests.testSort(idx)
 
 
